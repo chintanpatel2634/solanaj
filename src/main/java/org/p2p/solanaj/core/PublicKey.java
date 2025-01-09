@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Getter;
 import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
 import org.p2p.solanaj.utils.ByteUtils;
@@ -91,21 +92,32 @@ public class PublicKey {
         }
     }
 
+    
+    public static PublicKey createWithSeed(PublicKey fromPublicKey, String seed, PublicKey programId) {
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+            if (seed.length() > 32) {
+                throw new IllegalArgumentException("Max seed length exceeded: " + seed.length());
+            }
+
+            buffer.write(fromPublicKey.toByteArray());
+            buffer.write(seed.getBytes());
+            buffer.write(programId.toByteArray());
+
+            byte[] hash = Sha256Hash.hash(buffer.toByteArray());
+            return new PublicKey(hash);
+        } catch (IOException e) {
+            throw new RuntimeException("Error creating program address", e);
+        }
+    }
+
+    @Getter
     public static class ProgramDerivedAddress {
-        private PublicKey address;
-        private int nonce;
+        private final PublicKey address;
+        private final int nonce;
 
         public ProgramDerivedAddress(PublicKey address, int nonce) {
             this.address = address;
             this.nonce = nonce;
-        }
-
-        public PublicKey getAddress() {
-            return address;
-        }
-
-        public int getNonce() {
-            return nonce;
         }
 
     }
@@ -123,6 +135,8 @@ public class PublicKey {
         }
         throw new IllegalStateException("Unable to find a viable program address nonce");
     }
+
+
 
     public static PublicKey valueOf(String publicKey) {
         return new PublicKey(publicKey);
